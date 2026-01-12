@@ -52,20 +52,22 @@ interface CustomProps<T extends FieldValues> {
   type?: string;
   variant?: "lg" | "sm";
 }
+type RenderInputProps<T extends FieldValues> = Omit<
+  CustomProps<T>,
+  "itemClassName" | "renderAfter"
+>;
 
 const RenderInput = <T extends FieldValues>({
   field,
   props,
 }: {
   field: T;
-  props: CustomProps<T>;
+  props: RenderInputProps<T>;
 }) => {
   const {
     fieldType,
     labelDescription,
     renderSkeleton,
-    itemClassName,
-    renderAfter,
     label,
     children,
     ...inputProps
@@ -199,7 +201,7 @@ const CustomFormField = <T extends FieldValues>({
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={cn("flex-1 space-y-0.5", itemClassName)}>
+        <FormItem className={cn("flex-1 gap-0.5", itemClassName)}>
           <div className="flex flex-col gap-y-2">
             {shouldShowPasswordWithRenderAfter ? (
               <div className="flex items-center">
@@ -224,7 +226,6 @@ const CustomFormField = <T extends FieldValues>({
               props={{ ...props, label, name }}
             />
           </div>
-
           <FormMessage className="text-xs" />
         </FormItem>
       )}
