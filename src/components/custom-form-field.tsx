@@ -16,7 +16,13 @@ import { cn } from "@/lib/utils";
 
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
-import { Select, SelectContent, SelectTrigger, SelectValue } from "./ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 export enum FormFieldType {
   CHECKBOX = "checkbox",
@@ -32,7 +38,6 @@ export enum FormFieldType {
 interface CustomProps<T extends FieldValues> {
   // ref?: React.RefObject<HTMLInputElement>;
   autoFocus?: boolean;
-  children?: React.ReactNode;
   className?: string;
   disabled?: boolean;
   fieldType: FormFieldType;
@@ -40,6 +45,7 @@ interface CustomProps<T extends FieldValues> {
   label?: React.ReactNode;
   labelDescription?: React.ReactNode;
   name: string;
+  options?: { label: string; value: string }[];
   onBlur?: (
     e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void;
@@ -69,7 +75,7 @@ const RenderInput = <T extends FieldValues>({
     labelDescription,
     renderSkeleton,
     label,
-    children,
+    options,
     ...inputProps
   } = props;
   switch (fieldType) {
@@ -159,7 +165,13 @@ const RenderInput = <T extends FieldValues>({
                 <SelectValue placeholder={inputProps.placeholder} />
               </SelectTrigger>
             </FormControl>
-            <SelectContent>{children}</SelectContent>
+            <SelectContent>
+              {options?.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </FormControl>
       );
