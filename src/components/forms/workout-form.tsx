@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,33 +14,20 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Visibility } from "@/lib/constants";
 import {
   ExerciseLibraryItem,
-  getExerciseById,
   getExerciseSuggestions,
 } from "@/lib/data/exercise-library";
 import { WorkoutInput, workoutSchema } from "@/lib/validations/workout.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BookOpen, GripVertical, Info, Plus, Trash2 } from "lucide-react";
 import { useReducer } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
+import { Autocomplete } from "../autocomplete";
+import CustomFormField, { FormFieldType } from "../custom-form-field";
+import { Icons } from "../icons";
 import { LoadingSwap } from "../loading-swap";
-
-/* -------------------------------------------------------------------------- */
-/*                                   Types                                    */
-/* -------------------------------------------------------------------------- */
 
 interface WorkoutFormProps {
   defaultValues?: Partial<WorkoutInput>;
@@ -50,64 +36,28 @@ interface WorkoutFormProps {
 }
 
 type ExerciseFormState = {
-  searchValues: Map<string, string>;
-  showSuggestions: Map<string, boolean>;
   selectedExerciseInfo: ExerciseLibraryItem | null;
 };
 
-type ExerciseFormAction =
-  | {
-      type: "UPDATE_SEARCH";
-      fieldId: string;
-      value: string;
-      showSuggestions?: boolean;
-    }
-  | { type: "REMOVE_EXERCISE"; fieldId: string }
-  | { type: "SHOW_EXERCISE_INFO"; payload: ExerciseLibraryItem | null };
-
-/* -------------------------------------------------------------------------- */
-/*                                  Reducer                                   */
-/* -------------------------------------------------------------------------- */
+type ExerciseFormAction = {
+  type: "SHOW_EXERCISE_INFO";
+  payload: ExerciseLibraryItem | null;
+};
 
 function exerciseFormReducer(
   state: ExerciseFormState,
   action: ExerciseFormAction
 ): ExerciseFormState {
   switch (action.type) {
-    case "UPDATE_SEARCH": {
-      const searchValues = new Map(state.searchValues);
-      const showSuggestions = new Map(state.showSuggestions);
-
-      searchValues.set(action.fieldId, action.value);
-      showSuggestions.set(
-        action.fieldId,
-        action.showSuggestions ?? action.value.length > 0
-      );
-
-      return { ...state, searchValues, showSuggestions };
-    }
-
-    case "REMOVE_EXERCISE": {
-      const searchValues = new Map(state.searchValues);
-      const showSuggestions = new Map(state.showSuggestions);
-
-      searchValues.delete(action.fieldId);
-      showSuggestions.delete(action.fieldId);
-
-      return { ...state, searchValues, showSuggestions };
-    }
-
     case "SHOW_EXERCISE_INFO":
-      return { ...state, selectedExerciseInfo: action.payload };
-
+      return {
+        ...state,
+        selectedExerciseInfo: action.payload,
+      };
     default:
       return state;
   }
 }
-
-/* -------------------------------------------------------------------------- */
-/*                             Component                                      */
-/* -------------------------------------------------------------------------- */
 
 export function WorkoutForm({
   defaultValues,
@@ -119,7 +69,7 @@ export function WorkoutForm({
     defaultValues: defaultValues || {
       name: "",
       description: "",
-      visibility: Visibility.PRIVATE,
+      visibility: "PRIVATE",
       exercises: [{ name: "", order: 0 }],
     },
   });
@@ -129,340 +79,144 @@ export function WorkoutForm({
     name: "exercises",
   });
 
-  const [state, dispatch] = useReducer(
-    exerciseFormReducer,
-    fields,
-    (fields) => {
-      const searchValues = new Map<string, string>();
-      const showSuggestions = new Map<string, boolean>();
-
-      fields.forEach((field) => {
-        if (field.name) {
-          searchValues.set(field.id, field.name);
-          showSuggestions.set(field.id, false);
-        }
-      });
-
-      return {
-        searchValues,
-        showSuggestions,
-        selectedExerciseInfo: null,
-      };
-    }
-  );
+  const [state, dispatch] = useReducer(exerciseFormReducer, {
+    selectedExerciseInfo: null,
+  });
 
   const isSubmitting = form.formState.isSubmitting;
   const isLoading = _isLoading || isSubmitting;
 
-  /* ------------------------------------------------------------------------ */
-  /*                              Handlers                                    */
-  /* ------------------------------------------------------------------------ */
-
-  const handleSearchChange = (
-    fieldId: string,
-    value: string,
-    index: number
-  ) => {
-    dispatch({ type: "UPDATE_SEARCH", fieldId, value });
-    form.setValue(`exercises.${index}.name`, value);
-  };
-
-  const selectExercise = (
-    fieldId: string,
-    exerciseName: string,
-    index: number
-  ) => {
-    dispatch({
-      type: "UPDATE_SEARCH",
-      fieldId,
-      value: exerciseName,
-      showSuggestions: false,
-    });
-
-    form.setValue(`exercises.${index}.name`, exerciseName);
-
-    const exercise = getExerciseById(
-      exerciseName.toLowerCase().replace(/\s+/g, "-")
-    );
-
-    if (exercise?.equipment.some((e) => e === "barbell" || e === "dumbbell")) {
-      form.setValue(`exercises.${index}.sets`, 3);
-      form.setValue(`exercises.${index}.reps`, 10);
-    }
-  };
-
-  const showExerciseInfo = (exerciseName: string) => {
-    const exercise = getExerciseById(
-      exerciseName.toLowerCase().replace(/\s+/g, "-")
-    );
-
-    if (exercise) {
-      dispatch({ type: "SHOW_EXERCISE_INFO", payload: exercise });
-    }
-  };
-
-  const handleRemoveExercise = (index: number, fieldId: string) => {
-    dispatch({ type: "REMOVE_EXERCISE", fieldId });
-    remove(index);
-  };
-
-  const exerciseNumberFields = ["sets", "reps", "weight", "duration"] as const;
-  /* ------------------------------------------------------------------------ */
-  /*                                  JSX                                     */
-  /* ------------------------------------------------------------------------ */
+  const exerciseNumberFields = [
+    { key: "sets", placeholder: "Sets" },
+    { key: "reps", placeholder: "Reps" },
+    { key: "weight", placeholder: "Weight" },
+    { key: "duration", placeholder: "Duration" },
+  ] as const;
 
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <CustomFormField
+            fieldType={FormFieldType.INPUT}
             name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Workout Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Upper Body Strength" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Workout Name"
+            placeholder="Upper Body Strength"
           />
-
-          <FormField
-            control={form.control}
+          <CustomFormField
+            fieldType={FormFieldType.TEXTAREA}
             name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description (optional)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    rows={3}
-                    placeholder="Focus on compound movements..."
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Workout Description (optional)"
+            placeholder="Focus on compound movements..."
           />
-
-          <FormField
-            control={form.control}
+          <CustomFormField
+            fieldType={FormFieldType.SELECT}
             name="visibility"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Visibility</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={Visibility.PRIVATE}>
-                      Private (only you)
-                    </SelectItem>
-                    <SelectItem value={Visibility.FOLLOWERS}>
-                      Followers
-                    </SelectItem>
-                    <SelectItem value={Visibility.PUBLIC}>Public</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Visibility"
+            options={[
+              { value: "PRIVATE", label: "Private (only you)" },
+              { value: "FOLLOWERS", label: "Followers" },
+              { value: "PUBLIC", label: "Public" },
+            ]}
           />
 
           {/* Exercises */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <FormLabel>Exercises</FormLabel>
               <Button
                 type="button"
-                size="sm"
-                variant="outline"
+                size="xs"
+                variant="link"
                 onClick={() => append({ name: "", order: fields.length })}
+                className="p-0 h-auto rounded-none"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Icons.plus />
                 Add Exercise
               </Button>
             </div>
 
             <div className="space-y-3">
-              {fields.map((field, index) => {
-                const searchValue = state.searchValues.get(field.id) || "";
-                const suggestions = getExerciseSuggestions(searchValue);
-                const showSuggestions =
-                  state.showSuggestions.get(field.id) && suggestions.length > 0;
+              {fields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="p-3 border border-border rounded-xl flex gap-2"
+                >
+                  <div className="flex-1 space-y-3">
+                    <CustomFormField
+                      fieldType={FormFieldType.SKELETON}
+                      name={`exercises.${index}.name`}
+                      renderSkeleton={(field) => (
+                        <Autocomplete
+                          name={field.name}
+                          value={field.value ?? ""}
+                          placeholder="Exercise name..."
+                          fetchItems={getExerciseSuggestions}
+                          getItemValue={(item) => item.name}
+                          onChange={field.onChange}
+                          onSelect={(exercise) => {
+                            form.setValue(
+                              `exercises.${index}.name`,
+                              exercise.name
+                            );
 
-                return (
-                  <Card key={field.id} className="p-4">
-                    <div className="flex gap-4">
-                      <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
-
-                      <div className="flex-1 space-y-3">
-                        <FormField
-                          control={form.control}
-                          name={`exercises.${index}.name`}
-                          render={() => (
-                            <FormItem>
-                              <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                  <Input
-                                    value={searchValue}
-                                    placeholder="Exercise name..."
-                                    onChange={(e) =>
-                                      handleSearchChange(
-                                        field.id,
-                                        e.target.value,
-                                        index
-                                      )
-                                    }
-                                    onFocus={() =>
-                                      searchValue &&
-                                      dispatch({
-                                        type: "UPDATE_SEARCH",
-                                        fieldId: field.id,
-                                        value: searchValue,
-                                        showSuggestions: true,
-                                      })
-                                    }
-                                    onBlur={() =>
-                                      setTimeout(
-                                        () =>
-                                          dispatch({
-                                            type: "UPDATE_SEARCH",
-                                            fieldId: field.id,
-                                            value: searchValue,
-                                            showSuggestions: false,
-                                          }),
-                                        150
-                                      )
-                                    }
-                                  />
-
-                                  {showSuggestions && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
-                                      {suggestions.map((exercise) => (
-                                        <button
-                                          key={exercise.id}
-                                          type="button"
-                                          className="w-full px-4 py-2 text-left hover:bg-gray-100 flex justify-between"
-                                          onClick={() =>
-                                            selectExercise(
-                                              field.id,
-                                              exercise.name,
-                                              index
-                                            )
-                                          }
-                                        >
-                                          <div>
-                                            <div className="font-medium">
-                                              {exercise.name}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                              {exercise.primaryMuscles.join(
-                                                ", "
-                                              )}
-                                            </div>
-                                          </div>
-                                          <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {searchValue &&
-                                  getExerciseById(
-                                    searchValue
-                                      .toLowerCase()
-                                      .replace(/\s+/g, "-")
-                                  ) && (
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() =>
-                                        showExerciseInfo(searchValue)
-                                      }
-                                    >
-                                      <Info className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                              </div>
-                            </FormItem>
-                          )}
+                            if (
+                              exercise.equipment.some(
+                                (e) => e === "barbell" || e === "dumbbell"
+                              )
+                            ) {
+                              form.setValue(`exercises.${index}.sets`, 3);
+                              form.setValue(`exercises.${index}.reps`, 10);
+                            }
+                          }}
+                          renderItem={(exercise) => exercise.name}
                         />
+                      )}
+                    />
 
-                        {/* sets / reps / weight / duration */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                          {exerciseNumberFields.map((key) => (
-                            <FormField
-                              key={key}
-                              control={form.control}
-                              name={`exercises.${index}.${key}`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step={
-                                        key === "weight" ? "0.1" : undefined
-                                      }
-                                      placeholder={key}
-                                      value={field.value ?? ""}
-                                      onChange={(e) =>
-                                        field.onChange(
-                                          e.target.value
-                                            ? Number(e.target.value)
-                                            : null
-                                        )
-                                      }
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          ))}
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name={`exercises.${index}.notes`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Textarea
-                                  rows={2}
-                                  placeholder="Notes (optional)"
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                    {/* sets / reps / weight / duration */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {exerciseNumberFields.map(({ key, placeholder }) => (
+                        <CustomFormField
+                          key={key}
+                          name={`exercises.${index}.${key}`}
+                          fieldType={FormFieldType.INPUT}
+                          placeholder={placeholder}
+                          type="number"
                         />
-                      </div>
-
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        disabled={fields.length === 1}
-                        onClick={() => handleRemoveExercise(index, field.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      ))}
                     </div>
-                  </Card>
-                );
-              })}
+
+                    <FormField
+                      control={form.control}
+                      name={`exercises.${index}.notes`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              rows={2}
+                              placeholder="Notes (optional)"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    disabled={fields.length === 1}
+                    onClick={() => remove(index)}
+                    className="-mx-1 text-destructive"
+                  >
+                    <Icons.trash />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 

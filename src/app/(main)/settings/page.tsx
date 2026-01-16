@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadingSwap } from "@/components/loading-swap";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,76 +22,96 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { updateProfile } from "@/lib/actions/settings.actions";
-import { useSession } from "@/lib/auth/auth-client";
-import { Visibility } from "@/lib/constants";
+import { useUpdateUser, useUserSession } from "@/hooks/use-session";
+import { VISIBILITY, Visibility } from "@/lib/constants";
+import { getInitials } from "@/lib/utils";
 import { Bell, Settings as SettingsIcon, Shield, User } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useReducer } from "react";
 import { toast } from "sonner";
 
+type Units = "metric" | "imperial";
+type WeekStart = "sunday" | "monday";
+
+type State = {
+  name: string;
+  bio: string;
+  units: Units;
+  defaultVisibility: Visibility;
+  weekStart: WeekStart;
+};
+
+type Action = {
+  type: "SET_FIELD";
+  field: keyof State;
+  value: State[keyof State];
+};
+
+const initialState: State = {
+  name: "",
+  bio: "",
+  units: "metric",
+  defaultVisibility: "PRIVATE" as const,
+  weekStart: "monday",
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "SET_FIELD":
+      return {
+        ...state,
+        [action.field]: action.value,
+      };
+
+    default:
+      return state;
+  }
+}
+
 export default function SettingsPage() {
-  const router = useRouter();
-  const { data: session } = useSession();
-  const [isLoading, setIsLoading] = useState(false);
+  const { data } = useUserSession();
+  const { mutateAsync, isPending } = useUpdateUser();
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Profile form
-  const [name, setName] = useState(session?.user.name || "");
-  const [bio, setBio] = useState("");
+  const user = data?.user;
+  // const preferences = data?.preferences;
 
-  // Preferences
-  const [units, setUnits] = useState<"metric" | "imperial">("metric");
-  const [defaultVisibility, setDefaultVisibility] = useState<Visibility>(
-    Visibility.PRIVATE
-  );
-  const [weekStart, setWeekStart] = useState<"sunday" | "monday">("monday");
+  useEffect(() => {
+    if (!user) return;
 
-  const handleUpdateProfile = async () => {
-    setIsLoading(true);
-    try {
-      const result = await updateProfile({
-        name,
-        bio: bio || undefined,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field: "name",
+      value: user.name ?? "",
+    });
+    dispatch({
+      type: "SET_FIELD",
+      field: "bio",
+      value: user.bio ?? "",
+    });
+  }, [user]);
 
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Profile updated successfully");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Failed to update profile");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSavePreferences = () => {
-    // Save preferences to localStorage for now
-    localStorage.setItem(
-      "workout-preferences",
-      JSON.stringify({
-        units,
-        defaultVisibility,
-        weekStart,
-      })
-    );
-    toast.success("Preferences saved");
-  };
-
-  if (!session) {
+  if (!user) {
     return null;
   }
 
-  const initials =
-    session.user.name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase() ||
-    session.user.username?.[0]?.toUpperCase() ||
-    "U";
+  const handleUpdateProfile = async () =>
+    await mutateAsync({
+      name: state.name.trim(),
+      bio: state.bio.trim() || undefined,
+    });
+
+  const handleSavePreferences = () => {
+    localStorage.setItem(
+      "workout-preferences",
+      JSON.stringify({
+        units: state.units,
+        defaultVisibility: state.defaultVisibility,
+        weekStart: state.weekStart,
+      })
+    );
+
+    toast.success("Preferences saved");
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-8">
@@ -133,9 +154,9 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="flex items-center gap-6">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={session.user.image || undefined} />
+                  <AvatarImage src={user.image || undefined} />
                   <AvatarFallback className="text-2xl">
-                    {initials}
+                    {getInitials(user.name || "U")}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -153,11 +174,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={session.user.username || ""}
-                    disabled
-                  />
+                  <Input id="username" value={user.username || ""} disabled />
                   <p className="text-xs text-muted-foreground">
                     Username cannot be changed
                   </p>
@@ -168,7 +185,7 @@ export default function SettingsPage() {
                   <Input
                     id="email"
                     type="email"
-                    value={session.user.email || ""}
+                    value={user.email || ""}
                     disabled
                   />
                   <p className="text-xs text-muted-foreground">
@@ -180,8 +197,14 @@ export default function SettingsPage() {
                   <Label htmlFor="name">Display Name</Label>
                   <Input
                     id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={state.name}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "name",
+                        value: e.target.value,
+                      })
+                    }
                     placeholder="Your name"
                   />
                 </div>
@@ -190,19 +213,25 @@ export default function SettingsPage() {
                   <Label htmlFor="bio">Bio</Label>
                   <Textarea
                     id="bio"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
+                    value={state.bio}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "bio",
+                        value: e.target.value,
+                      })
+                    }
                     placeholder="Tell us about yourself..."
                     rows={4}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {bio.length}/160 characters
+                    {state.bio.length}/160 characters
                   </p>
                 </div>
               </div>
 
-              <Button onClick={handleUpdateProfile} disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save Changes"}
+              <Button onClick={handleUpdateProfile} disabled={isPending}>
+                <LoadingSwap isLoading={isPending}>Save Changes</LoadingSwap>
               </Button>
             </CardContent>
           </Card>
@@ -222,8 +251,14 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="units">Units</Label>
                   <Select
-                    value={units}
-                    onValueChange={(value: any) => setUnits(value)}
+                    value={state.units}
+                    onValueChange={(v) =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "units",
+                        value: v as Units,
+                      })
+                    }
                   >
                     <SelectTrigger id="units">
                       <SelectValue />
@@ -240,20 +275,25 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="visibility">Default Workout Visibility</Label>
                   <Select
-                    value={defaultVisibility}
-                    onValueChange={(value: any) => setDefaultVisibility(value)}
+                    value={state.defaultVisibility}
+                    onValueChange={(v) =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "defaultVisibility",
+                        value: v as Visibility,
+                      })
+                    }
                   >
                     <SelectTrigger id="visibility">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={Visibility.PRIVATE}>
-                        Private
-                      </SelectItem>
-                      <SelectItem value={Visibility.FOLLOWERS}>
-                        Followers Only
-                      </SelectItem>
-                      <SelectItem value={Visibility.PUBLIC}>Public</SelectItem>
+                      {VISIBILITY.map((visibility) => (
+                        <SelectItem key={visibility} value={visibility}>
+                          {visibility.charAt(0) +
+                            visibility.slice(1).toLowerCase()}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -261,8 +301,14 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="weekStart">Week Starts On</Label>
                   <Select
-                    value={weekStart}
-                    onValueChange={(value: any) => setWeekStart(value)}
+                    value={state.weekStart}
+                    onValueChange={(v) =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "weekStart",
+                        value: v as WeekStart,
+                      })
+                    }
                   >
                     <SelectTrigger id="weekStart">
                       <SelectValue />

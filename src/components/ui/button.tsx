@@ -23,8 +23,8 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground before:from-primary-foreground/20 after:from-primary-foreground/10 hover:bg-primary/90 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-xl before:bg-linear-to-r before:opacity-80 before:transition-opacity after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:rounded-md after:bg-linear-to-r after:to-transparent after:mix-blend-overlay",
       },
       size: {
-        default: "h-10 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-7 rounded-sm font-semibold text-xs gap-1 px-2 has-[>svg]:px-1.5",
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        xs: "h-7 rounded-sm font-semibold text-xs gap-1 px-2 has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-14 rounded-2xl text-base gap-3 px-6 has-[>svg]:px-4",
         icon: "size-9",

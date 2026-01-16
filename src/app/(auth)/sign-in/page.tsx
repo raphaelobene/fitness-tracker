@@ -5,6 +5,7 @@ import CustomFormField, { FormFieldType } from "@/components/custom-form-field";
 import { LoadingSwap } from "@/components/loading-swap";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { useSpinDelay } from "@/hooks/use-spin-delay";
 import { signIn } from "@/lib/auth/auth-client";
 import { site } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,11 @@ export default function SigngInPage() {
     },
   });
   const { isSubmitting } = form.formState;
+
+  const showSpinner = useSpinDelay(isSubmitting, {
+    delay: 300,
+    minDuration: 500,
+  });
 
   function onSubmit(data: SignInInput) {
     signIn.email(
@@ -99,6 +105,7 @@ export default function SigngInPage() {
             label="Email"
             name="email"
             placeholder="alan.turing@example.com"
+            disabled={showSpinner}
             type="email"
             variant="lg"
           />
@@ -108,6 +115,7 @@ export default function SigngInPage() {
             label="Password"
             name="password"
             placeholder="••••••••"
+            disabled={showSpinner}
             renderAfter={
               <Link
                 aria-label="Forgot your password?"
@@ -128,9 +136,9 @@ export default function SigngInPage() {
             size="lg"
             type="submit"
             className="w-full"
-            disabled={isSubmitting}
+            disabled={showSpinner}
           >
-            <LoadingSwap isLoading={isSubmitting}>Sign in</LoadingSwap>
+            <LoadingSwap isLoading={showSpinner}>Sign in</LoadingSwap>
           </Button>
         </form>
       </Form>

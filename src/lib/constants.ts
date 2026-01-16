@@ -7,11 +7,8 @@ export const site = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };
 
-export enum Visibility {
-  PRIVATE = "PRIVATE",
-  FOLLOWERS = "FOLLOWERS",
-  PUBLIC = "PUBLIC",
-}
+export const VISIBILITY = ["FOLLOWERS", "PUBLIC", "PRIVATE"] as const;
+export type Visibility = (typeof VISIBILITY)[number];
 
 export const links = [
   { href: "/", label: "Home", icon: Icons.home },

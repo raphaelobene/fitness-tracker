@@ -9,15 +9,17 @@ import {
 interface ErrorCardProps {
   title: string;
   description?: string;
+  className?: string;
   actionButton?: React.ReactNode;
 }
 export default function ErrorCard({
   title,
   description,
+  className,
   actionButton,
 }: ErrorCardProps) {
   return (
-    <Empty>
+    <Empty className={className}>
       <EmptyHeader>
         <EmptyTitle>{title}</EmptyTitle>
         {description && (

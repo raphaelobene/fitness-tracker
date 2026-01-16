@@ -10,7 +10,7 @@ export default function HeaderActions({
   title,
 }: {
   title?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -24,14 +24,16 @@ export default function HeaderActions({
         <button
           onClick={onClick}
           title="Back"
-          className="isolate cursor-pointer outline-none -mx-2 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-6.5 shrink-0 [&_svg]:shrink-0 text-primary"
+          className="isolate cursor-pointer outline-none -mx-2 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-6.5 shrink-0 [&_svg]:shrink-0 text-muted-foreground"
         >
           <span className="sr-only">Back</span>
           <Icons.arrowLeft />
         </button>
         {/* <div className="font-semibold line-clamp-1">{title ?? name}</div> */}
       </div>
-      <div className="inline-flex items-center gap-6">{children}</div>
+      {children && (
+        <div className="inline-flex items-center gap-6">{children}</div>
+      )}
     </div>
   );
 }

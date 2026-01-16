@@ -5,6 +5,7 @@ import CustomFormField, { FormFieldType } from "@/components/custom-form-field";
 import { LoadingSwap } from "@/components/loading-swap";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { useSpinDelay } from "@/hooks/use-spin-delay";
 import { signUpAction } from "@/lib/actions/auth.actions";
 import { signIn } from "@/lib/auth/auth-client";
 import { site } from "@/lib/constants";
@@ -28,6 +29,10 @@ export default function SignUpPage() {
     },
   });
   const { isSubmitting } = form.formState;
+  const showSpinner = useSpinDelay(isSubmitting, {
+    delay: 300,
+    minDuration: 500,
+  });
 
   async function onSubmit(data: SignUpInput) {
     // await signUp.email(
@@ -120,6 +125,7 @@ export default function SignUpPage() {
             label="Name"
             name="name"
             placeholder="Alan Turing"
+            disabled={showSpinner}
             variant="lg"
           />
           {/* <CustomFormField
@@ -135,6 +141,7 @@ export default function SignUpPage() {
             label="Email"
             name="email"
             placeholder="alan.turing@example.com"
+            disabled={showSpinner}
             type="email"
             variant="lg"
           />
@@ -144,6 +151,7 @@ export default function SignUpPage() {
             label="Password"
             name="password"
             placeholder="••••••••"
+            disabled={showSpinner}
             variant="lg"
           />
 
@@ -151,9 +159,9 @@ export default function SignUpPage() {
             size="lg"
             type="submit"
             className="w-full"
-            disabled={isSubmitting}
+            disabled={showSpinner}
           >
-            <LoadingSwap isLoading={isSubmitting}>Create account</LoadingSwap>
+            <LoadingSwap isLoading={showSpinner}>Create account</LoadingSwap>
           </Button>
         </form>
       </Form>

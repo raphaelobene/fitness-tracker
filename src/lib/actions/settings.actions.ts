@@ -31,6 +31,7 @@ export async function updateProfile(data: {
       },
     });
 
+    revalidatePath("/settings", "page");
     revalidatePath("/profile/[username]", "page");
     return { success: true, data: updated };
   } catch (error) {
@@ -43,34 +44,24 @@ export async function updateProfile(data: {
 }
 
 export async function getSettings() {
-  try {
-    const user = await requireAuth();
+  const user = await requireAuth();
 
-    // For now, we'll just return user data
-    // In the future, you can create a Settings model
-    return {
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name,
-          email: user.email,
-          bio: null,
-          image: null,
-        },
-        preferences: {
-          units: "metric" as const, // or 'imperial'
-          defaultVisibility: "PRIVATE" as const,
-          weekStart: "monday" as const,
-        },
-      },
-    };
-  } catch (error) {
-    console.error("Get settings error:", error);
-    if (error instanceof Error) {
-      return { error: error.message };
-    }
-    return { error: "Failed to fetch settings" };
-  }
+  // For now, we'll just return user data
+  // In the future, you can create a Settings model
+  revalidatePath("/settings", "page");
+  return {
+    user: {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      bio: null,
+      image: null,
+    },
+    preferences: {
+      units: "metric" as const, // or 'imperial'
+      defaultVisibility: "PRIVATE" as const,
+      weekStart: "monday" as const,
+    },
+  };
 }

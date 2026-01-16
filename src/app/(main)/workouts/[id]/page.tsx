@@ -60,8 +60,8 @@ export default function WorkoutDetailPage({ params }: SearchParamProps) {
             <Link
               href={`/workouts/${workout.id}/edit`}
               className={cn(
-                buttonVariants({ variant: "outline", size: "icon-sm" }),
-                "-mx-2 [&_svg:not([class*='size-'])]:size-5.5 hover:bg-transparent border-0 shadow-none"
+                buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                "-mx-2"
               )}
             >
               <Icons.edit />
@@ -73,11 +73,11 @@ export default function WorkoutDetailPage({ params }: SearchParamProps) {
               mutationArgs={id}
               isLoading={isPending}
               actionButtonClassname="bg-destructive/30 text-destructive not-disabled:hover:bg-destructive/35"
-              className="bg-transparent text-destructive not-disabled:hover:bg-transparent -mx-2 [&_svg:not([class*='size-'])]:size-4.5"
+              className="bg-transparent text-destructive not-disabled:hover:bg-transparent -mx-2"
               actionButtonText="Delete Workout"
               areYouSureDescription={
                 <>
-                  <span>Are you sure you want to delete this workout?</span>
+                  <span>Are you sure you want to delete this workout?</span>{" "}
                   <span className="text-destructive font-semibold">
                     This action cannot be undone.
                   </span>

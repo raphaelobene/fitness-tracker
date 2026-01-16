@@ -1,8 +1,9 @@
 "use client";
 
+import { useDebounce } from "@/hooks/usehooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -11,124 +12,112 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkoutCard } from "@/components/workout/workout-card";
+
+import HeaderActions from "@/components/header-actions";
+import { Icons } from "@/components/icons";
+import {
+  SectionHeader,
+  SectionHeaderDescription,
+  SectionHeaderHeading,
+} from "@/components/section-header";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
+import { SearchResults } from "@/components/workout/search-results";
+import { useQueryString } from "@/hooks/use-query-string";
 import { useFeedWorkouts, useUserWorkouts } from "@/hooks/use-workouts";
-import { Visibility } from "@/lib/constants";
-import { Filter, Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { VISIBILITY } from "@/lib/constants";
 
-export default function SearchWorkoutsPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const [visibility, setVisibility] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("recent");
+// Extracted search input component
+const SearchInput = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <InputGroup className="flex-1">
+    <InputGroupInput
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Search workouts..."
+      value={value}
+    />
+    <InputGroupAddon>
+      <Icons.search />
+    </InputGroupAddon>
+  </InputGroup>
+);
 
-  const { data: myWorkouts, isLoading: myLoading } = useUserWorkouts();
-  const { data: feedWorkouts, isLoading: feedLoading } = useFeedWorkouts();
+// Memoized filter component
+const FilterSection = () => {
+  const { getQueryParam, setQueryParam } = useQueryString();
 
-  const isLoading = myLoading || feedLoading;
-
-  // Combine workouts
-  const allWorkouts = [...(myWorkouts || []), ...(feedWorkouts || [])];
-
-  // Remove duplicates
-  const uniqueWorkouts = Array.from(
-    new Map(allWorkouts.map((w) => [w.id, w])).values()
+  const visibility = useMemo(
+    () => (getQueryParam("visibility") ?? "all") as string,
+    [getQueryParam]
   );
 
-  // Filter workouts
-  let filtered = uniqueWorkouts;
+  const sortBy = useMemo(
+    () => (getQueryParam("sort") ?? "recent") as string,
+    [getQueryParam]
+  );
 
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filtered = filtered.filter(
-      (workout) =>
-        workout.name.toLowerCase().includes(query) ||
-        workout.description?.toLowerCase().includes(query) ||
-        workout.exercises.some((ex) => ex.name.toLowerCase().includes(query))
-    );
-  }
+  const handleVisibilityChange = useCallback(
+    (value: string) =>
+      setQueryParam("visibility", value === "all" || !value ? null : value),
+    [setQueryParam]
+  );
 
-  if (visibility !== "all") {
-    filtered = filtered.filter((workout) => workout.visibility === visibility);
-  }
-
-  // Sort workouts
-  if (sortBy === "recent") {
-    filtered = filtered.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  } else if (sortBy === "popular") {
-    filtered = filtered.sort((a, b) => b._count.likes - a._count.likes);
-  } else if (sortBy === "name") {
-    filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (searchQuery) params.set("q", searchQuery);
-    router.push(`/workouts/search?${params.toString()}`);
-  };
-
-  const clearFilters = () => {
-    setSearchQuery("");
-    setVisibility("all");
-    setSortBy("recent");
-    router.push("/workouts/search");
-  };
+  const handleSortChange = useCallback(
+    (value: string) =>
+      setQueryParam("sort", value === "recent" || !value ? null : value),
+    [setQueryParam]
+  );
 
   return (
-    <div className="space-y-6 pb-8">
-      <div>
-        <h1 className="text-3xl font-bold">Search Workouts</h1>
-        <p className="text-muted-foreground mt-1">
-          Find workouts by name, description, or exercises
-        </p>
-      </div>
-
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search workouts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </form>
-
-          {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <Drawer>
+      <DrawerTrigger asChild>
+        <Button variant="outline">
+          <Icons.slider /> Filter
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <div className="mx-auto max-w-md w-full">
+          <DrawerHeader>
+            <DrawerTitle>Filter</DrawerTitle>
+          </DrawerHeader>
+          <div className="grid grid-cols-2 pb-safe-offset-4 gap-3">
             <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Visibility
-              </label>
-              <Select value={visibility} onValueChange={setVisibility}>
-                <SelectTrigger>
+              <Label>Visibility</Label>
+              <Select value={visibility} onValueChange={handleVisibilityChange}>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Workouts</SelectItem>
-                  <SelectItem value={Visibility.PUBLIC}>Public</SelectItem>
-                  <SelectItem value={Visibility.FOLLOWERS}>
-                    Followers Only
-                  </SelectItem>
-                  <SelectItem value={Visibility.PRIVATE}>Private</SelectItem>
+                  {VISIBILITY.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v.charAt(0) + v.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
+              <Label>Sort By</Label>
+              <Select value={sortBy} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -138,53 +127,107 @@ export default function SearchWorkoutsPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                onClick={clearFilters}
-                className="w-full"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Clear Filters
-              </Button>
-            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-64 w-full" />
-          ))}
         </div>
-      ) : (
-        <>
-          <div className="text-sm text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "workout" : "workouts"}{" "}
-            found
-          </div>
+      </DrawerContent>
+    </Drawer>
+  );
+};
 
-          {filtered.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">No workouts found</p>
-                <Button variant="link" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {filtered.map((workout) => (
-                <WorkoutCard key={workout.id} workout={workout} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+export default function SearchWorkoutsPage() {
+  const { getQueryParam, setQueryParams, currentParams } = useQueryString();
+
+  const { data: myWorkouts, isLoading: myLoading } = useUserWorkouts();
+  const { data: feedWorkouts, isLoading: feedLoading } = useFeedWorkouts();
+
+  const isLoading = myLoading || feedLoading;
+
+  // Get initial search value from URL
+  const initialSearch = useMemo(
+    () => getQueryParam("q") ?? "",
+    [getQueryParam]
+  );
+
+  // State for local search input
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  // Sync debounced search → URL
+  useEffect(() => {
+    if (debouncedSearch !== initialSearch) {
+      setQueryParams({
+        q: debouncedSearch || null,
+      });
+    }
+  }, [debouncedSearch, setQueryParams, initialSearch]);
+
+  // Combine + dedupe workouts - memoized
+  const workouts = useMemo(() => {
+    if (!myWorkouts && !feedWorkouts) return [];
+    const all = [...(myWorkouts || []), ...(feedWorkouts || [])];
+    return Array.from(new Map(all.map((w) => [w.id, w])).values());
+  }, [myWorkouts, feedWorkouts]);
+
+  const hasFilters = useMemo(() => {
+    const hasSearch = searchInput.trim().length > 0;
+
+    const hasVisibility =
+      currentParams.visibility && currentParams.visibility !== "all";
+
+    const hasSort = currentParams.sort && currentParams.sort !== "recent";
+
+    return hasSearch || hasVisibility || hasSort;
+  }, [searchInput, currentParams.visibility, currentParams.sort]);
+
+  // Clear filters handler
+  const clearFilters = useCallback(() => {
+    setSearchInput("");
+    setQueryParams({
+      q: null,
+      visibility: null,
+      sort: null,
+    });
+  }, [setQueryParams]);
+
+  const asString = (value: unknown, fallback: string) =>
+    typeof value === "string" ? value : fallback;
+
+  return (
+    <>
+      <HeaderActions title="Search Workouts" />
+      <div className="space-y-6">
+        <SectionHeader className="flex-col gap-5">
+          <div className="flex flex-col w-full gap-1">
+            <SectionHeaderHeading className="text-3xl">
+              Search Workouts
+            </SectionHeaderHeading>
+            <SectionHeaderDescription>
+              Find workouts by name, description, or exercises
+            </SectionHeaderDescription>
+          </div>
+          <div className="flex items-center w-full gap-3">
+            <SearchInput value={searchInput} onChange={setSearchInput} />
+            <FilterSection />
+          </div>
+        </SectionHeader>
+
+        {isLoading ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-64 w-full" />
+            ))}
+          </div>
+        ) : (
+          <SearchResults
+            workouts={workouts}
+            searchQuery={searchInput}
+            visibility={asString(currentParams.visibility, "all")}
+            sortBy={asString(currentParams.sort, "recent")}
+            hasFilters={hasFilters}
+            onClearFilters={clearFilters}
+          />
+        )}
+      </div>
+    </>
   );
 }

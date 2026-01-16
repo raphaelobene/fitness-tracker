@@ -1,7 +1,11 @@
 "use client";
 
 import { WorkoutForm } from "@/components/forms/workout-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import HeaderActions from "@/components/header-actions";
+import {
+  SectionHeader,
+  SectionHeaderHeading,
+} from "@/components/section-header";
 import { useCreateWorkout } from "@/hooks/use-workouts";
 import { WorkoutInput } from "@/lib/validations/workout.schema";
 import { useRouter } from "next/navigation";
@@ -18,18 +22,22 @@ export default function NewWorkoutPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Workout</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WorkoutForm
-            onSubmit={handleSubmit}
-            isLoading={createWorkout.isPending}
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <HeaderActions title="Create new workout" />
+      <div className="space-y-6">
+        <SectionHeader className="flex-col">
+          <div className="flex flex-col w-full gap-1">
+            <SectionHeaderHeading className="text-3xl">
+              Create New Workout
+            </SectionHeaderHeading>
+          </div>
+        </SectionHeader>
+
+        <WorkoutForm
+          onSubmit={handleSubmit}
+          _isLoading={createWorkout.isPending}
+        />
+      </div>
+    </>
   );
 }

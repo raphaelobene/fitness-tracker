@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Visibility } from "../constants";
+import { VISIBILITY } from "../constants";
 
 // Exercise schema with proper validation
 // export const exerciseSchema = z.object({
@@ -16,29 +16,21 @@ import { Visibility } from "../constants";
 const exerciseSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1),
-  order: z.number().int(),
-  sets: z.number().nullable().optional(),
-  reps: z.number().nullable().optional(),
-  duration: z.number().nullable().optional(),
-  weight: z.number().nullable().optional(),
+  order: z.coerce.number<number>().int(),
+  sets: z.coerce.number<number>().nullable().optional(),
+  reps: z.coerce.number<number>().nullable().optional(),
+  duration: z.coerce.number<number>().nullable().optional(),
+  weight: z.coerce.number<number>().nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 
-// Main workout creation schema
-// export const workoutSchema = z.object({
-//   name: z.string().min(1, "Workout name is required").max(100),
-//   description: z.string().max(500).optional().nullable(),
-//   visibility: z.enum(Visibility),
-//   exercises: z
-//     .array(exerciseSchema)
-//     .min(1, "At least one exercise is required"),
-// });
-
 export const workoutSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().nullable().optional(),
-  visibility: z.nativeEnum(Visibility),
-  exercises: z.array(exerciseSchema).min(1),
+  name: z.string().min(1, "Workout name is required"),
+  description: z.string().max(500).nullable().optional(),
+  visibility: z.enum(VISIBILITY),
+  exercises: z
+    .array(exerciseSchema)
+    .min(1, "At least one exercise is required"),
 });
 
 // Update schema includes the workout ID
@@ -50,7 +42,7 @@ export const updateWorkoutSchema = workoutSchema.extend({
 export const cloneWorkoutSchema = z.object({
   workoutId: z.string().min(1, "Workout ID is required"),
   name: z.string().min(1, "Workout name is required").max(100).optional(),
-  visibility: z.enum(Visibility).optional(),
+  visibility: z.enum(VISIBILITY).optional(),
 });
 
 export type ExerciseInput = z.infer<typeof exerciseSchema>;

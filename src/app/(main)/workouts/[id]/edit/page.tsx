@@ -1,18 +1,18 @@
 "use client";
 
 import { WorkoutForm } from "@/components/forms/workout-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import HeaderActions from "@/components/header-actions";
+import {
+  SectionHeader,
+  SectionHeaderHeading,
+} from "@/components/section-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUpdateWorkout, useWorkout } from "@/hooks/use-workouts";
 import { WorkoutInput } from "@/lib/validations/workout.schema";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
-export default function EditWorkoutPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function EditWorkoutPage({ params }: SearchParamProps) {
   const { id } = use(params);
   const router = useRouter();
   const { data: workout, isLoading } = useWorkout(id);
@@ -40,33 +40,37 @@ export default function EditWorkoutPage({
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Edit Workout</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WorkoutForm
-            defaultValues={{
-              name: workout.name,
-              description: workout.description || undefined,
-              visibility: workout.visibility,
-              exercises: workout.exercises.map((ex) => ({
-                id: ex.id,
-                name: ex.name,
-                sets: ex.sets || undefined,
-                reps: ex.reps || undefined,
-                duration: ex.duration || undefined,
-                weight: ex.weight || undefined,
-                notes: ex.notes || undefined,
-                order: ex.order,
-              })),
-            }}
-            onSubmit={handleSubmit}
-            isLoading={updateWorkout.isPending}
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <HeaderActions title="Edit workout" />
+      <div className="space-y-6">
+        <SectionHeader className="flex-col">
+          <div className="flex flex-col w-full gap-1">
+            <SectionHeaderHeading className="text-3xl">
+              Edit Workout
+            </SectionHeaderHeading>
+          </div>
+        </SectionHeader>
+
+        <WorkoutForm
+          defaultValues={{
+            name: workout.name,
+            description: workout.description || undefined,
+            visibility: workout.visibility,
+            exercises: workout.exercises.map((ex) => ({
+              id: ex.id,
+              name: ex.name,
+              sets: ex.sets || undefined,
+              reps: ex.reps || undefined,
+              duration: ex.duration || undefined,
+              weight: ex.weight || undefined,
+              notes: ex.notes || undefined,
+              order: ex.order,
+            })),
+          }}
+          onSubmit={handleSubmit}
+          _isLoading={updateWorkout.isPending}
+        />
+      </div>
+    </>
   );
 }
